@@ -1,0 +1,1 @@
+run lunchy start postgres to starts postgresql server
