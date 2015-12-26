@@ -4,6 +4,6 @@ CREATE TABLE users (
 	lname varchar(50),
 	address varchar(50),
 	email varchar (20),
-	age int(3),
+	age integer,
 	dateCreated timestamp
 )
