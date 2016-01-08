@@ -1,5 +1,8 @@
 # Ruby ORM by Richard Mable
 
+# bulk of this is going to be parasing the data
+# 
+
 def directions
 	puts ""
 	puts "Directions:"
@@ -18,12 +21,17 @@ class User
 	attr_accessor :fname, :lname, :address, :email, :age
 
 	#might need a method to initialize database, pass in arguments, and create the table
-	def initialize(fname="", lname="", address="", email="", age="")
-		@fname = fname
-		@lname = lname
-		@address = address
-		@email = email
-		@age = age
+	#create a hash of values then pull from the hash to assign to vars @fname = hash_of_values[:fname]
+	#turn string into array with i.split! where the ! saves the new array to i without making a new var
+	#use t.gsub("<", "") to replace < or etc with white space, to use t.split! properly
+	#
+	#User.new initializes a new user object, and assigns each value to an instance var. Pass in the key: value pairs, save to a var if desired
+	def initialize(userAttributes = {})
+		@fname = userAttributes.fetch(:fname)
+		@lname = userAttributes.fetch(:lname)
+		@address = userAttributes.fetch(:address)
+		@email = userAttributes.fetch(:email)
+		@age = userAttributes.fetch(:age)
 	end
 
 	# find - takes an ID argument and finds the User with that ID, returns a user object w/ information on that user from the DB
@@ -34,8 +42,40 @@ class User
 	end
 
 	# where - takes a Hash argument of user attributes and finds users with those attributes, returns an array of matching User objects
-	# def self.where(user_hash{})
-	# 	if fname = ""
+	# this method will place a user in the array if they match *ANY* attribute provided
+
+	# this will be the regexp that returns only the user's info: 
+	# .gsub(/-|\+|\||\n|\(|\)|1 row|id|fname|lname|address|email|age|datecreated/, '')
+	def self.where(userAttributes = {fname: "", lname: "", address: "", email: "", age: ""})
+		#create an empty array to push matched users into
+		arrayWhoMatches = Array.new
+		#rotate through each key value pair and check if they match the key value pair in the DB
+		userAttributes.each do |k, v|
+			#if fname matches first thing returned etc
+			# deal with blanks?
+			queryReturn = `psql -d ORM -c "SELECT * FROM users WHERE #{k} = '#{v}'";`
+			queryReturn.gsub!(/-|\+|\||\n|\(|\)|1 row|id|fname|lname|address|email|age|datecreated/, '')
+			#then make array
+			#then go through the array
+			if v == `psql -d ORM -c "SELECT * FROM users WHERE #{k} = '#{v}'";`
+				#if it is a match, put the user into the arrayWhoMatches
+				@arrayWhoMatches.push(`psql -d ORM -c "SELECT * FROM users WHERE #{k} = '#{v}'";`)
+			else
+				puts ""
+				puts "There were no matches to your query."
+				puts ""
+			end
+		end
+		# Now print the results to irb
+		puts ""
+		puts "Here are the results of your query:"
+		puts ""
+		puts arrayWhoMatches
+	end
+
+
+	# 	if userAttributes.fetch(:fname) == `psql -d ORM -c "SELECT * FROM users WHERE fname = #{userAttributes.fetch(:fname)}";`
+	# 		@arrayWhoMatches.push(fname)
 
 	# 	end
 
