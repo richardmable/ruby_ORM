@@ -76,19 +76,20 @@ class User
 	end
 
 	# where - takes a Hash argument of user attributes and finds users with those attributes, returns an array of matching User objects
-	# this method will place a user in the array if they match *ANY* attribute provided
+	# this method will return results only if the user matches all attributes provided
 	def self.where(userAttributes = {})
 		#set the keys and values vars to empty inititally
 		keys = ""
 		values = ""
-		#rotate through each key value pair and 
+		#rotate through each key value pair and make them match as in a hash
 		userAttributes.each do |k, v|
 			keys += "#{k.to_s}" + ', '
 			values += "'#{v.to_s}'" + ', '
 		end
-
+		#remove the extra spaces
 		keys = keys.chop.chop
 		values = values.chop.chop
+		#now search the database for users that match the supplied key value pairs
 		queryReturn = `psql -d ORM -c "SELECT * FROM users WHERE (#{keys}) = (#{values})";`
 		#check to see if there are any results, by seeing if queryReturn contains the 'no results' string from irb
 		if queryReturn == " id | fname | lname | email | age | datecreated \n----+-------+-------+-------+-----+-------------\n(0 rows)\n\n"
@@ -101,16 +102,21 @@ class User
 
 	# all - returns all users in the database as objects inside of an array
 	def self.all
-	@arrayUsers = Array.new{Hash.new}	
-		tableSize = `psql -d ORM -c "SELECT COUNT(id) FROM users;"`
-		puts tableSize
-		i = 1
-		(1..5).each do |i|	
+	#create an new empty hash
+	arrayUsers = Array.new	
+	#check the size of the table
+	tableSize = `psql -d ORM -c "SELECT COUNT(id) FROM users;"`
+	#parse the result by removing formatting
+	tableSize.gsub!(/-|count|\(|\)|\n|1 row/, '')
+	#turn the results into an int
+	tableSize = tableSize.to_i
+	(1..tableSize).each do |i|	
 			userObject = `psql -d ORM -c "SELECT fname, lname, email, age FROM users WHERE ID = '#{i}'";`
-			@arrayUsers.push(userObject)
+			parse_info userObject
+			arrayUsers.push(userObject)
 			i += 1
 		end
-		puts @arrayUsers
+		puts arrayUsers
 	end
 
 	# last - returns an object containing the last user in the database
@@ -144,6 +150,7 @@ class User
 	def self.destroy
 	end
 
+	# this method turns the psql search results into human readable, workable data
 	def self.parse_info(returned_value)
 		#initialize line number to 0 to iterate through the lines of results
 		line_num = 0
