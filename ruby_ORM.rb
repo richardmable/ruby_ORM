@@ -18,7 +18,8 @@ end
 directions
 
 class User
-	attr_accessor :fname, :lname, :address, :email, :age
+	attr_accessor :fname, :lname, :email, :age
+	attr_reader :id
 
 	#might need a method to initialize database, pass in arguments, and create the table
 	#create a hash of values then pull from the hash to assign to vars @fname = hash_of_values[:fname]
@@ -27,11 +28,16 @@ class User
 	#
 	#User.new initializes a new user object, and assigns each value to an instance var. Pass in the key: value pairs, save to a var if desired
 	def initialize(userAttributes = {})
-		@fname = userAttributes.fetch(:fname)
-		@lname = userAttributes.fetch(:lname)
-		@address = userAttributes.fetch(:address)
-		@email = userAttributes.fetch(:email)
-		@age = userAttributes.fetch(:age)
+		@fname = userAttributes.fetch(:fname) if userAttributes[:fname]
+		@lname = userAttributes.fetch(:lname) if userAttributes[:lname]
+		@email = userAttributes.fetch(:email) if userAttributes[:email]
+		@age = userAttributes.fetch(:age) if userAttributes[:age]
+		puts "User ID: #{userAttributes[:id]}"
+		puts "First Name: #{userAttributes[:fname]}"
+		puts "Last Name: #{userAttributes[:lname]}"
+		puts "Email: #{userAttributes[:email]}"
+		puts "Age: #{userAttributes[:age]}"
+
 	end
 
 	# find - takes an ID argument and finds the User with that ID, returns a user object w/ information on that user from the DB
@@ -43,43 +49,27 @@ class User
 
 	# where - takes a Hash argument of user attributes and finds users with those attributes, returns an array of matching User objects
 	# this method will place a user in the array if they match *ANY* attribute provided
-
-	# this will be the regexp that returns only the user's info: 
-	# .gsub(/-|\+|\||\n|\(|\)|1 row|id|fname|lname|address|email|age|datecreated/, '')
-	def self.where(userAttributes = {fname: "", lname: "", address: "", email: "", age: ""})
-		#create an empty array to push matched users into
-		arrayWhoMatches = Array.new
+	def self.where(userAttributes = {})
+		keys = ""
+		values = ""
 		#rotate through each key value pair and check if they match the key value pair in the DB
 		userAttributes.each do |k, v|
-			#if fname matches first thing returned etc
-			# deal with blanks?
-			queryReturn = `psql -d ORM -c "SELECT * FROM users WHERE #{k} = '#{v}'";`
-			queryReturn.gsub!(/-|\+|\||\n|\(|\)|1 row|id|fname|lname|address|email|age|datecreated/, '')
-			#then make array
-			#then go through the array
-			if v == `psql -d ORM -c "SELECT * FROM users WHERE #{k} = '#{v}'";`
-				#if it is a match, put the user into the arrayWhoMatches
-				@arrayWhoMatches.push(`psql -d ORM -c "SELECT * FROM users WHERE #{k} = '#{v}'";`)
-			else
-				puts ""
-				puts "There were no matches to your query."
-				puts ""
-			end
+			keys += "#{k.to_s}" + ', '
+			values += "'#{v.to_s}'" + ', '
 		end
-		# Now print the results to irb
-		puts ""
-		puts "Here are the results of your query:"
-		puts ""
-		puts arrayWhoMatches
+
+		keys = keys.chop.chop
+		values = values.chop.chop
+		queryReturn = `psql -d ORM -c "SELECT * FROM users WHERE (#{keys}) = (#{values})";`
+		#check to see if there are any results, by seeing if queryReturn contains the 'no results' string from irb
+		if queryReturn == " id | fname | lname | email | age | datecreated \n----+-------+-------+-------+-----+-------------\n(0 rows)\n\n"
+			puts "There were no results of your search."
+		#else, call the parse info function to parse the results into a readable format and print to terminal
+		else
+			parse_info queryReturn
+		end
+		
 	end
-
-
-	# 	if userAttributes.fetch(:fname) == `psql -d ORM -c "SELECT * FROM users WHERE fname = #{userAttributes.fetch(:fname)}";`
-	# 		@arrayWhoMatches.push(fname)
-
-	# 	end
-
-	# end
 
 	# all - returns all users in the database as objects inside of an array
 	def self.all
@@ -125,5 +115,34 @@ class User
 	# destroy - Destroys a particular record.
 	def self.destroy
 	end
+
+	def self.parse_info returned_value
+		#initialize line number to 0 to iterate through the lines of results
+		line_num = 0
+		#count the number of lines, so that we know how many results were returned
+		lineCount = (returned_value.lines.count - 3)
+		#
+		returned_value.each_line do |line|
+			# removes the pipes and splits the remaining information into an array
+			searchResultInfo = line.gsub("|", '').split
+			(2..lineCount).each do |userInfoLine|
+				if line_num == userInfoLine
+					puts "Your search returned some results!"
+					# sets information found by each user by accessing array searchResultInfo
+					# prints out to irb by invoking the new user method
+					User.new(id: searchResultInfo[0], fname: searchResultInfo[1], lname: searchResultInfo[2], email: searchResultInfo[3], age: searchResultInfo[4])
+					puts "Next User:"
+				end
+			end
+			#increment the line_num by one to move onto the next line
+			line_num += 1
+		end	
+	end
 end
+
+
+
+
+
+
 
