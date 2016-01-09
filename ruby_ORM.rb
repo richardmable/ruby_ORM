@@ -1,21 +1,47 @@
 # Ruby ORM by Richard Mable
 
-# bulk of this is going to be parasing the data
-# 
-
+#directions the are printed to irb
 def directions
 	puts ""
 	puts "Directions:"
-	puts ".find will find a user by id, .all will return all users as objects in an array,"
-	puts ".last and .first will find the last and first entries to the DB."
-	puts "DB name is ORM, table is users"
-	puts "class is User"
 	puts ""
-	puts "This is a work in progress!"
+	puts "If you have not created a database, run the dbCreate function"
+	puts "This will create a psql db called ORM"
+	puts "If you need to create a user table, run the tableCreate function"
+	puts "DB name is ORM"
+	puts "table is users"
+	puts "table columns are: id(auto), fname, lname, email, age"
+	puts "class is User"
+	puts ".find will find a user by id "
+	puts ".where takes in a hash of user attributes, searches through the database for users"
+	puts "with those attributes, and returns the results if there are any."
+	puts ".all will return all users as objects in an array,"
+	puts ".last and .first will find the last and first entries to the DB."
+	puts ""
+	puts "Have fun!"
 	puts ""
 end
 
+#when ruby_ORM.rb is loaded, prints the directions for the user
 directions
+
+def dbCreate
+	`createdb ORM`
+	puts "psql database ORM created!"
+end
+
+#creates a table called users with the appropriate columns if the user has not created a table in the db
+def tableCreate
+	`psql -d ORM -c "CREATE TABLE users (
+		id serial PRIMARY KEY,
+		fname varchar(50),
+		lname varchar(50),
+		address varchar(50),
+		email varchar (20),
+		age integer
+		)";`
+puts "Table users was created!"
+end	
 
 class User
 	attr_accessor :fname, :lname, :email, :age
@@ -28,10 +54,12 @@ class User
 	#
 	#User.new initializes a new user object, and assigns each value to an instance var. Pass in the key: value pairs, save to a var if desired
 	def initialize(userAttributes = {})
+		#sets instance variables equal to the user attributes, if they exist
 		@fname = userAttributes.fetch(:fname) if userAttributes[:fname]
 		@lname = userAttributes.fetch(:lname) if userAttributes[:lname]
 		@email = userAttributes.fetch(:email) if userAttributes[:email]
 		@age = userAttributes.fetch(:age) if userAttributes[:age]
+		#outputs the user's information to irb
 		puts "User ID: #{userAttributes[:id]}"
 		puts "First Name: #{userAttributes[:fname]}"
 		puts "Last Name: #{userAttributes[:lname]}"
@@ -50,9 +78,10 @@ class User
 	# where - takes a Hash argument of user attributes and finds users with those attributes, returns an array of matching User objects
 	# this method will place a user in the array if they match *ANY* attribute provided
 	def self.where(userAttributes = {})
+		#set the keys and values vars to empty inititally
 		keys = ""
 		values = ""
-		#rotate through each key value pair and check if they match the key value pair in the DB
+		#rotate through each key value pair and 
 		userAttributes.each do |k, v|
 			keys += "#{k.to_s}" + ', '
 			values += "'#{v.to_s}'" + ', '
@@ -64,11 +93,10 @@ class User
 		#check to see if there are any results, by seeing if queryReturn contains the 'no results' string from irb
 		if queryReturn == " id | fname | lname | email | age | datecreated \n----+-------+-------+-------+-----+-------------\n(0 rows)\n\n"
 			puts "There were no results of your search."
-		#else, call the parse info function to parse the results into a readable format and print to terminal
+		#else, call the parse_info function to parse the results into a readable format and print to terminal
 		else
 			parse_info queryReturn
 		end
-		
 	end
 
 	# all - returns all users in the database as objects inside of an array
@@ -78,7 +106,7 @@ class User
 		puts tableSize
 		i = 1
 		(1..5).each do |i|	
-			userObject = `psql -d ORM -c "SELECT fname, lname, address, email, age FROM users WHERE ID = '#{i}'";`
+			userObject = `psql -d ORM -c "SELECT fname, lname, email, age FROM users WHERE ID = '#{i}'";`
 			@arrayUsers.push(userObject)
 			i += 1
 		end
@@ -116,18 +144,21 @@ class User
 	def self.destroy
 	end
 
-	def self.parse_info returned_value
+	def self.parse_info(returned_value)
 		#initialize line number to 0 to iterate through the lines of results
 		line_num = 0
-		#count the number of lines, so that we know how many results were returned
+		#count the number of lines, so that we know how many results were returned, and subtract 3
+		#this is to account for the fact that the last 3 lines of any result do not contain user info
 		lineCount = (returned_value.lines.count - 3)
-		#
+		puts "Your search returned some results!"
+		#for each line, do the following actions:
 		returned_value.each_line do |line|
 			# removes the pipes and splits the remaining information into an array
 			searchResultInfo = line.gsub("|", '').split
+			#now for lines 2 through lineCount, where lineCount is the max line of user information, do these actions
 			(2..lineCount).each do |userInfoLine|
+				#check to see if the current line_num matches the userInfoLine
 				if line_num == userInfoLine
-					puts "Your search returned some results!"
 					# sets information found by each user by accessing array searchResultInfo
 					# prints out to irb by invoking the new user method
 					User.new(id: searchResultInfo[0], fname: searchResultInfo[1], lname: searchResultInfo[2], email: searchResultInfo[3], age: searchResultInfo[4])
