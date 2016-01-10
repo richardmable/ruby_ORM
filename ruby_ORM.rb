@@ -60,7 +60,13 @@ class User
 	def self.find(id)
 		# backticks ` escape the irb, psql -d ORM goes into psql, -c make the line in "" a command
 		userById = `psql -d ORM -c "SELECT * FROM users WHERE id = #{id}";`
-		puts userById
+		if userById == " id | fname | lname | email | age | datecreated \n----+-------+-------+-------+-----+-------------\n(0 rows)\n\n"
+			puts "There were no results of your search."
+		#else, call the parse_info function to parse the results into a readable format and print to terminal
+		else
+			puts "Your search returned some results!"
+			parse_info userById
+		end
 	end
 
 	# where - takes a Hash argument of user attributes and finds users with those attributes, returns an array of matching User objects
@@ -119,7 +125,13 @@ class User
 	def self.last
 		#sort the order of the table by descending number, then limit to the first result, print to page.
 		userLast = `psql -d ORM -c "SELECT * FROM users ORDER BY id DESC LIMIT 1"`
-		puts userLast
+		if userLast == " id | fname | lname | email | age | datecreated \n----+-------+-------+-------+-----+-------------\n(0 rows)\n\n"
+			puts "There were no results of your search."
+		#else, call the parse_info function to parse the results into a readable format and print to terminal
+		else
+			puts "Your search returned some results!"
+			parse_info userLast
+		end
 	end
 
 	# begin EC
@@ -127,7 +139,13 @@ class User
 	# first - returns an object containing the first user in the database
 	def self.first
 		userFirst = `psql -d ORM -c "SELECT * FROM users ORDER BY id ASC LIMIT 1"`
-		puts userFirst
+		if userFirst == " id | fname | lname | email | age | datecreated \n----+-------+-------+-------+-----+-------------\n(0 rows)\n\n"
+			puts "There were no results of your search."
+		#else, call the parse_info function to parse the results into a readable format and print to terminal
+		else
+			puts "Your search returned some results!"
+			parse_info userFirst
+		end
 	end
 
 	# create - Takes a Hash of user attributes and creates a new user record in the database, returns that record with the correct ID
@@ -178,10 +196,3 @@ class User
 		puts arrayUsers
 	end
 end
-
-
-
-
-
-
-
