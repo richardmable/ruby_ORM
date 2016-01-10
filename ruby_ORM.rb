@@ -3,22 +3,22 @@
 #directions the are printed to irb
 def directions
 	puts ""
-	puts "Directions:"
+	puts "                     Directions:"
 	puts ""
-	puts "If you have not created a database, run the dbCreate function"
-	puts "This will create a psql db called ORM"
-	puts "If you need to create a user table, run the tableCreate function"
-	puts "DB name is ORM"
-	puts "table is users"
-	puts "table columns are: id(auto), fname, lname, email, age"
-	puts "class is User"
-	puts ".find will find a user by id "
-	puts ".where takes in a hash of user attributes, searches through the database for users"
-	puts "with those attributes, and returns the results if there are any."
-	puts ".all will return all users as objects in an array,"
-	puts ".last and .first will find the last and first entries to the DB."
+	puts "     If you have not created a database, run the dbCreate function"
+	puts "     This will create a psql db called ORM"
+	puts "     If you need to create a user table, run the tableCreate function"
+	puts "     DB name is ORM"
+	puts "     table is users"
+	puts "     table columns are: id(auto), fname, lname, email, age"
+	puts "     class is User"
+	puts "     .find will find a user by id "
+	puts "     .where takes in a hash of user attributes, searches through the database for users"
+	puts "     with those attributes, and returns the results if there are any."
+	puts "     .all will return all users as objects in an array,"
+	puts "     .last and .first will find the last and first entries to the DB."
 	puts ""
-	puts "Have fun!"
+	puts "                      Have fun!"
 	puts ""
 end
 
@@ -36,36 +36,24 @@ def tableCreate
 		id serial PRIMARY KEY,
 		fname varchar(50),
 		lname varchar(50),
-		address varchar(50),
 		email varchar (20),
 		age integer
 		)";`
-puts "Table users was created!"
+puts "Table users was created in db ORM!"
 end	
 
 class User
 	attr_accessor :fname, :lname, :email, :age
 	attr_reader :id
 
-	#might need a method to initialize database, pass in arguments, and create the table
-	#create a hash of values then pull from the hash to assign to vars @fname = hash_of_values[:fname]
-	#turn string into array with i.split! where the ! saves the new array to i without making a new var
-	#use t.gsub("<", "") to replace < or etc with white space, to use t.split! properly
-	#
 	#User.new initializes a new user object, and assigns each value to an instance var. Pass in the key: value pairs, save to a var if desired
 	def initialize(userAttributes = {})
 		#sets instance variables equal to the user attributes, if they exist
+		@id = userAttributes.fetch(:id) if userAttributes[:id]
 		@fname = userAttributes.fetch(:fname) if userAttributes[:fname]
 		@lname = userAttributes.fetch(:lname) if userAttributes[:lname]
 		@email = userAttributes.fetch(:email) if userAttributes[:email]
 		@age = userAttributes.fetch(:age) if userAttributes[:age]
-		#outputs the user's information to irb
-		puts "User ID: #{userAttributes[:id]}"
-		puts "First Name: #{userAttributes[:fname]}"
-		puts "Last Name: #{userAttributes[:lname]}"
-		puts "Email: #{userAttributes[:email]}"
-		puts "Age: #{userAttributes[:age]}"
-
 	end
 
 	# find - takes an ID argument and finds the User with that ID, returns a user object w/ information on that user from the DB
@@ -96,27 +84,35 @@ class User
 			puts "There were no results of your search."
 		#else, call the parse_info function to parse the results into a readable format and print to terminal
 		else
+			puts "Your search returned some results!"
 			parse_info queryReturn
 		end
 	end
 
 	# all - returns all users in the database as objects inside of an array
 	def self.all
-	#create an new empty hash
-	arrayUsers = Array.new	
-	#check the size of the table
+	#check the size of the table users
 	tableSize = `psql -d ORM -c "SELECT COUNT(id) FROM users;"`
-	#parse the result by removing formatting
+	#parse the resulting string by removing formatting and set tableSize to that result
 	tableSize.gsub!(/-|count|\(|\)|\n|1 row/, '')
-	#turn the results into an int
+	#turn the string into an int to be used for the range in .each do
 	tableSize = tableSize.to_i
-	(1..tableSize).each do |i|	
-			userObject = `psql -d ORM -c "SELECT fname, lname, email, age FROM users WHERE ID = '#{i}'";`
-			parse_info userObject
-			arrayUsers.push(userObject)
-			i += 1
+	#if the table size is 0, there are no results, so this will print a message to the user informing them
+		if tableSize == 0
+			puts "There were no results of your search. Maybe you have an empty database?"
+		#if the tableSize is any other number than 0, there are results, and this will print those results for the user
+		else
+			puts "Here are all users in the database:"
+			#now for 1 through the size of the table, look for a user with that id
+			(1..tableSize).each do |i|	
+				#each time through, assign userObject to the result of the search for that user's attributes via their ID
+				queryReturn = `psql -d ORM -c "SELECT id, fname, lname, email, age FROM users WHERE ID = '#{i}'";`
+				#run the parse_info method on the result to push the user's information into a human readable array
+				parse_info queryReturn
+				#increment i by 1 to move onto the next result
+				i += 1
+			end
 		end
-		puts arrayUsers
 	end
 
 	# last - returns an object containing the last user in the database
@@ -154,10 +150,11 @@ class User
 	def self.parse_info(returned_value)
 		#initialize line number to 0 to iterate through the lines of results
 		line_num = 0
+		#create a new empty hash
+		arrayUsers = Array.new
 		#count the number of lines, so that we know how many results were returned, and subtract 3
 		#this is to account for the fact that the last 3 lines of any result do not contain user info
 		lineCount = (returned_value.lines.count - 3)
-		puts "Your search returned some results!"
 		#for each line, do the following actions:
 		returned_value.each_line do |line|
 			# removes the pipes and splits the remaining information into an array
@@ -167,14 +164,18 @@ class User
 				#check to see if the current line_num matches the userInfoLine
 				if line_num == userInfoLine
 					# sets information found by each user by accessing array searchResultInfo
-					# prints out to irb by invoking the new user method
-					User.new(id: searchResultInfo[0], fname: searchResultInfo[1], lname: searchResultInfo[2], email: searchResultInfo[3], age: searchResultInfo[4])
-					puts "Next User:"
+					userObject = User.new(id: searchResultInfo[0], fname: searchResultInfo[1], lname: searchResultInfo[2], email: searchResultInfo[3], age: searchResultInfo[4])
+					#set the userObject to the current search result, as a human readable string 
+					userObject = "ID: #{userObject.id}, First Name: #{userObject.fname}, Last Name: #{userObject.lname}, Email: #{userObject.email}, Age: #{userObject.age}"
+					#add the current userObject into the array arrayUsers
+					arrayUsers.push(userObject)
 				end
 			end
 			#increment the line_num by one to move onto the next line
 			line_num += 1
 		end	
+		#print the array of results to terminal
+		puts arrayUsers
 	end
 end
 
