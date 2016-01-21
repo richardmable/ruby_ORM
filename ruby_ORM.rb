@@ -137,8 +137,6 @@ class User
 		end
 	end
 
-	# begin EC
-
 	# first - returns an object containing the first user in the database
 	def self.first
 		userFirst = `psql -d ORM -c "SELECT * FROM users ORDER BY id ASC LIMIT 1;"`
@@ -153,6 +151,30 @@ class User
 
 	# create - Takes a Hash of user attributes and creates a new user record in the database, returns that record with the correct ID
 	def self.create
+		#create a new hash
+		userCreate = Hash.new
+		puts "First Name:"
+		#ask user for first name
+		fname_input = gets
+		#get rid of the return character
+		fname_input = fname_input.chomp
+		#store the inputted value into the newly created hash
+		userCreate.store("fname", "#{fname_input}")
+		puts "Last Name:"
+		lname_input = gets
+		lname_input = lname_input.chomp
+		userCreate.store("lname", "#{lname_input}")
+		puts "Email:"
+		email_input = gets
+		email_input = email_input.chomp
+		userCreate.store("email", "#{email_input}")
+		puts "Age:"
+		age_input = gets
+		age_input = age_input.chomp
+		userCreate.store("age", age_input)
+		puts userCreate
+		#create the user by inserting the stored hash values into the database
+		`psql -d ORM -c "INSERT INTO users (fname, lname, email, age) VALUES ('#{userCreate['fname']}', '#{userCreate['lname']}', '#{userCreate['email']}', '#{userCreate['age']}');"`
 	end
 
 	# destroy_all - Destroys every record in the users table.
