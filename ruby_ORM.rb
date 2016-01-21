@@ -19,6 +19,9 @@ def directions
 	puts "     .last and .first will find the last and first entries to the DB."
 	puts "     .destroy_all will delete every record in the DB."
 	puts "     .destroy will ask you for a user's first name, and then delete that user."
+	puts "     .create will create a new user with your inputs."
+	puts "     .save will save an instance of User in the DB. So pass in fname, lname, email age"
+	puts "     to the User.save(fname, lname, email, age(integer) method and it will save to the database."
 	puts ""
 	puts "                      Have fun!"
 	puts ""
@@ -68,7 +71,8 @@ class User
 		#else, call the parse_info function to parse the results into a readable format and print to terminal
 		else
 			puts "Your search returned some results!"
-			parse_info userById
+			#this returns an array. Use .first to pull it out of the array to be its own object
+			(parse_info userById).first
 		end
 	end
 
@@ -111,17 +115,24 @@ class User
 			puts "There were no results of your search. Maybe you have an empty database?"
 		#if the tableSize is any other number than 0, there are results, and this will print those results for the user
 		else
+			allUsers = Array.new
 			puts "Here are all users in the database:"
 			#now for 1 through the size of the table, look for a user with that id
 			(1..tableSize).each do |i|	
 				#each time through, assign userObject to the result of the search for that user's attributes via their ID
 				queryReturn = `psql -d ORM -c "SELECT id, fname, lname, email, age FROM users WHERE ID = '#{i}';"`
-				#run the parse_info method on the result to push the user's information into a human readable array
-				parse_info queryReturn
+				#grab the return of the parse_info each time it loops through, set to userInfo
+				userInfo = parse_info queryReturn
+				#grab the userInfo out of the array, so that we do not have arrays within arrays
+				userInfo = userInfo.first
+				#push that object into the allUsers array
+				allUsers.push(userInfo)
 				#increment i by 1 to move onto the next result
 				i += 1
 			end
 		end
+		#class method returns all the users in the database in the array
+		allUsers
 	end
 
 	# last - returns an object containing the last user in the database
@@ -133,7 +144,8 @@ class User
 		#else, call the parse_info function to parse the results into a readable format and print to terminal
 		else
 			puts "Your search returned some results!"
-			parse_info userLast
+			#this returns an array. Use .first to pull it out of the array to be its own object
+			(parse_info userLast).first
 		end
 	end
 
@@ -145,7 +157,8 @@ class User
 		#else, call the parse_info function to parse the results into a readable format and print to terminal
 		else
 			puts "Your search returned some results!"
-			parse_info userFirst
+			#this returns an array. Use .first to pull it out of the array to be its own object
+			(parse_info userFirst).first
 		end
 	end
 
@@ -184,7 +197,9 @@ class User
 	end
 
 	# save - An instance method. Saves an instance of User inside the database.
-	def self.save
+	def self.save(fname, lname, email, age)
+		x = User.new({fname: "#{fname}", lname: "#{lname}", email: "#{email}", age: age})
+		return x
 	end
 
 	# destroy - Destroys a particular record.
@@ -205,13 +220,12 @@ class User
 		end
 	end
 
-	
 	# this method turns the psql search results into human readable, workable data
 	def self.parse_info(returned_value)
 		#initialize line number to 0 to iterate through the lines of results
 		line_num = 0
 		#create a new empty hash
-		@arrayUsers = Array.new
+		arrayUsers = Array.new
 		#count the number of lines, so that we know how many results were returned, and subtract 3
 		#this is to account for the fact that the last 3 lines of any result do not contain user info
 		lineCount = (returned_value.lines.count - 3)
@@ -225,18 +239,15 @@ class User
 				if line_num == userInfoLine
 					# sets information found by each user by accessing array searchResultInfo
 					userObject = User.new(id: searchResultInfo[0], fname: searchResultInfo[1], lname: searchResultInfo[2], email: searchResultInfo[3], age: searchResultInfo[4])
-					#set the userObject to the current search result, as a hash of the information returned
-					userObject = {id: "#{userObject.id}", fname: "#{userObject.fname}", lname: "#{userObject.lname}", email: "#{userObject.email}", age: "#{userObject.age}"}
 					#add the current userObject into the array arrayUsers
-					@arrayUsers.push(userObject)
+					arrayUsers.push(userObject)
 				end
 			end
 			#increment the line_num by one to move onto the next line
 			line_num += 1
 		end	
-		#print the array of results to terminal
-		puts @arrayUsers
-
-		puts "You can now query @arrayUsers for more information."
+		#the last line is what is returned by the method
+		#hence put arrayUsers after the puts, or else arrayUsers becomes nil
+		arrayUsers
 	end
 end
