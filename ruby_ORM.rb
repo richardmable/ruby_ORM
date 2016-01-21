@@ -17,6 +17,8 @@ def directions
 	puts "     with those attributes, and returns the results if there are any."
 	puts "     .all will return all users as objects in an array,"
 	puts "     .last and .first will find the last and first entries to the DB."
+	puts "     .destroy_all will delete every record in the DB."
+	puts "     .destroy will ask you for a user's first name, and then delete that user."
 	puts ""
 	puts "                      Have fun!"
 	puts ""
@@ -54,6 +56,7 @@ class User
 		@lname = userAttributes.fetch(:lname) if userAttributes[:lname]
 		@email = userAttributes.fetch(:email) if userAttributes[:email]
 		@age = userAttributes.fetch(:age) if userAttributes[:age]
+
 	end
 
 	# find - takes an ID argument and finds the User with that ID, returns a user object w/ information on that user from the DB
@@ -112,7 +115,7 @@ class User
 			#now for 1 through the size of the table, look for a user with that id
 			(1..tableSize).each do |i|	
 				#each time through, assign userObject to the result of the search for that user's attributes via their ID
-				queryReturn = `psql -d ORM -c "SELECT id, fname, lname, email, age FROM users WHERE ID = '#{i}'";`
+				queryReturn = `psql -d ORM -c "SELECT id, fname, lname, email, age FROM users WHERE ID = '#{i}';"`
 				#run the parse_info method on the result to push the user's information into a human readable array
 				parse_info queryReturn
 				#increment i by 1 to move onto the next result
@@ -124,7 +127,7 @@ class User
 	# last - returns an object containing the last user in the database
 	def self.last
 		#sort the order of the table by descending number, then limit to the first result, print to page.
-		userLast = `psql -d ORM -c "SELECT * FROM users ORDER BY id DESC LIMIT 1"`
+		userLast = `psql -d ORM -c "SELECT * FROM users ORDER BY id DESC LIMIT 1;"`
 		if userLast == " id | fname | lname | email | age | datecreated \n----+-------+-------+-------+-----+-------------\n(0 rows)\n\n"
 			puts "There were no results of your search."
 		#else, call the parse_info function to parse the results into a readable format and print to terminal
@@ -138,7 +141,7 @@ class User
 
 	# first - returns an object containing the first user in the database
 	def self.first
-		userFirst = `psql -d ORM -c "SELECT * FROM users ORDER BY id ASC LIMIT 1"`
+		userFirst = `psql -d ORM -c "SELECT * FROM users ORDER BY id ASC LIMIT 1;"`
 		if userFirst == " id | fname | lname | email | age | datecreated \n----+-------+-------+-------+-----+-------------\n(0 rows)\n\n"
 			puts "There were no results of your search."
 		#else, call the parse_info function to parse the results into a readable format and print to terminal
@@ -154,6 +157,8 @@ class User
 
 	# destroy_all - Destroys every record in the users table.
 	def self.destroy_all
+		`psql -d ORM -c "DELETE FROM users;"`
+		puts "All users were deleted."
 	end
 
 	# save - An instance method. Saves an instance of User inside the database.
@@ -162,14 +167,29 @@ class User
 
 	# destroy - Destroys a particular record.
 	def self.destroy
+		puts "Please type the first name of the user you would like to delete:"
+		# grab the user's input for the person they want to delete from the DB
+		user_delete_fname = gets
+		#delete the return characters at the end of the user input
+		user_delete_fname = user_delete_fname.chomp
+		queryReturn = `psql -d ORM -c "SELECT * FROM users WHERE fname = '#{user_delete_fname}';";`
+		#check to see if that user exists
+		if queryReturn == " id | fname | lname | email | age | datecreated \n----+-------+-------+-------+-----+-------------\n(0 rows)\n\n"
+			puts "This person doesn't exist. Must have already deleted them?"
+		else
+			# the delete command, taking in the user input
+			`psql -d ORM -c "DELETE FROM users WHERE fname = '#{user_delete_fname}';"`
+			puts "#{user_delete_fname} was deleted."
+		end
 	end
 
+	
 	# this method turns the psql search results into human readable, workable data
 	def self.parse_info(returned_value)
 		#initialize line number to 0 to iterate through the lines of results
 		line_num = 0
 		#create a new empty hash
-		arrayUsers = Array.new
+		@arrayUsers = Array.new
 		#count the number of lines, so that we know how many results were returned, and subtract 3
 		#this is to account for the fact that the last 3 lines of any result do not contain user info
 		lineCount = (returned_value.lines.count - 3)
@@ -183,16 +203,18 @@ class User
 				if line_num == userInfoLine
 					# sets information found by each user by accessing array searchResultInfo
 					userObject = User.new(id: searchResultInfo[0], fname: searchResultInfo[1], lname: searchResultInfo[2], email: searchResultInfo[3], age: searchResultInfo[4])
-					#set the userObject to the current search result, as a human readable string 
-					userObject = "ID: #{userObject.id}, First Name: #{userObject.fname}, Last Name: #{userObject.lname}, Email: #{userObject.email}, Age: #{userObject.age}"
+					#set the userObject to the current search result, as a hash of the information returned
+					userObject = {id: "#{userObject.id}", fname: "#{userObject.fname}", lname: "#{userObject.lname}", email: "#{userObject.email}", age: "#{userObject.age}"}
 					#add the current userObject into the array arrayUsers
-					arrayUsers.push(userObject)
+					@arrayUsers.push(userObject)
 				end
 			end
 			#increment the line_num by one to move onto the next line
 			line_num += 1
 		end	
 		#print the array of results to terminal
-		puts arrayUsers
+		puts @arrayUsers
+
+		puts "You can now query @arrayUsers for more information."
 	end
 end
